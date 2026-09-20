@@ -7,8 +7,8 @@ ALLOWED_ORIGIN = "http://localhost:5173"
 
 [[kv_namespaces]]
 binding = "RUNWAY_CACHE"
-id = "da7be3dfd1a248b193cb60925881c8ad"
-preview_id = "1df2b1e6cec74208bd74eb89c334934f"
+id = "REPLACE_WITH_PRODUCTION_KV_ID"
+preview_id = "REPLACE_WITH_PREVIEW_KV_ID"
 
 [triggers]
 crons = ["17 */6 * * *"]

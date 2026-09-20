@@ -1,14 +1,14 @@
 export const foldSnapshot = {
-  syncedAt: '2026-09-13T02:45:35.98413Z',
+  syncedAt: '2026-01-01T00:00:00.000Z',
   currency: 'INR',
-  liquid: 26765.17,
-  investments: 92766.49,
+  liquid: 100000,
+  investments: 500000,
   debt: 0,
-  burn: 61392,
+  burn: 75000,
   monthlyBurn: [
-    { label: 'Jun', value: 63765 },
-    { label: 'Jul', value: 68310 },
-    { label: 'Aug', value: 52100 },
+    { label: 'Oct', value: 72000 },
+    { label: 'Nov', value: 78000 },
+    { label: 'Dec', value: 75000 },
   ],
   excludedCategories: ['Returns', 'Investments', 'Lent', 'Support', 'Business', 'Top-up'],
 } as const

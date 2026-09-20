@@ -1,74 +1,125 @@
-# Personal Runway
+# Runway
 
-A small personal-finance dashboard that answers: **How much runway do I have left?**
+A private personal-finance dashboard and 2×2 Android widget powered by [Fold Money MCP](https://mcp.fold.money/mcp).
 
-The current snapshot was calculated from read-only Fold Money MCP data:
+![Runway widget on Android](docs/runway-widget.png)
 
-- available money = liquid bank balance + optionally investments − debt
-- monthly burn = average adjusted outflow over the last three complete months
-- runway = available money ÷ monthly burn
+The widget shows:
 
-Categories that represent money movement rather than lifestyle burn are excluded from the baseline. The interface makes both the investment assumption and monthly burn adjustable.
+- **Total runway** — bank balance + investments − debt, divided by recent monthly burn.
+- **Liquid runway** — bank balance only, expressed in days.
 
-## Architecture
+## How it works
 
 ```text
-Fold Money MCP → Cloudflare Worker → KV snapshot → Web app / Android widget
-                         ↑                           │
-                    6-hour cron              15-minute cache check
+Fold OAuth → Cloudflare Worker → KV snapshot → Web app / Android widget
+                         ↑                         │
+                   every 6 hours           checks every 15 min
 ```
 
-The Worker stores only totals and the three adjusted monthly burn figures. It never stores transactions, account names, or account identifiers. A failed refresh does not overwrite the last good snapshot.
+Only aggregate balances, runway values, and three monthly burn totals are stored. Failed refreshes leave the last successful snapshot intact.
 
-## Run the web app locally
+## Prerequisites
+
+- Node.js 20+
+- A Cloudflare account
+- A Fold account
+- Android Studio with JDK 17 and Android SDK 35
+
+## 1. Clone and install
 
 ```bash
+git clone https://github.com/hellosatyajit/runway.git
+cd runway
 npm install
+```
+
+## 2. Deploy the Cloudflare Worker
+
+```bash
+npx wrangler login
+npx wrangler kv namespace create RUNWAY_CACHE
+npx wrangler kv namespace create RUNWAY_CACHE --preview
+cp worker/wrangler.example.toml worker/wrangler.toml
+```
+
+Replace both placeholder KV IDs in `worker/wrangler.toml` with the returned values.
+
+Generate a private API token and keep it in your password manager:
+
+```bash
+export RUNWAY_API_TOKEN="$(openssl rand -hex 32)"
+printf '%s' "$RUNWAY_API_TOKEN" | npx wrangler secret put RUNWAY_API_TOKEN --config worker/wrangler.toml
+printf '%s' 'https://mcp.fold.money/mcp' | npx wrangler secret put FOLD_MCP_URL --config worker/wrangler.toml
+```
+
+Save `RUNWAY_API_TOKEN` in your password manager, then deploy:
+
+```bash
+npm run worker:deploy
+```
+
+Wrangler prints a URL like `https://personal-runway-api.<your-subdomain>.workers.dev`.
+
+## 3. Connect Fold
+
+```bash
+curl -X POST \
+  -H "Authorization: Bearer $RUNWAY_API_TOKEN" \
+  https://personal-runway-api.<your-subdomain>.workers.dev/oauth/start
+```
+
+Open the returned `authorizationUrl`, sign into Fold, and approve access. The callback stores renewable OAuth credentials in KV and creates the first snapshot.
+
+```bash
+curl -H "Authorization: Bearer $RUNWAY_API_TOKEN" \
+  https://personal-runway-api.<your-subdomain>.workers.dev/oauth/status
+```
+
+## 4. Run the web dashboard
+
+Copy `.env.example` to `.env.local` and set:
+
+```dotenv
+VITE_RUNWAY_API_URL=https://personal-runway-api.<your-subdomain>.workers.dev
+VITE_RUNWAY_API_TOKEN=<your RUNWAY_API_TOKEN>
+```
+
+```bash
 npm run dev
 ```
 
-Copy `.env.example` to `.env.local` once the Worker is running. Without those variables, the web app deliberately falls back to the privacy-safe aggregate snapshot in `src/foldSnapshot.ts`.
+The browser token is visible to the browser user. Keep the deployment private or protect it with Cloudflare Access.
 
-## Deploy the Cloudflare Worker
+## 5. Build the Android widget
 
-1. Create the KV namespaces:
-
-   ```bash
-   npx wrangler kv namespace create RUNWAY_CACHE
-   npx wrangler kv namespace create RUNWAY_CACHE --preview
-   ```
-
-2. Put the returned IDs in `worker/wrangler.toml`.
-3. Set secrets (never put them in `wrangler.toml`):
-
-   ```bash
-   npx wrangler secret put FOLD_MCP_URL --config worker/wrangler.toml
-   npx wrangler secret put FOLD_MCP_TOKEN --config worker/wrangler.toml
-   npx wrangler secret put RUNWAY_API_TOKEN --config worker/wrangler.toml
-   npm run worker:deploy
-   ```
-
-`FOLD_MCP_URL` must be a Streamable HTTP MCP endpoint and `FOLD_MCP_TOKEN` must be a non-interactive credential accepted by that endpoint. If Fold only permits interactive OAuth, place an OAuth-capable MCP gateway in front of it rather than copying a browser token.
-
-The scheduled Worker refreshes Fold every six hours. `GET /api/runway` returns the cached snapshot. Authenticated `POST /api/refresh` performs an immediate Fold refresh. Both private endpoints require `Authorization: Bearer <RUNWAY_API_TOKEN>`.
-
-For a deployed browser app, protect the site with Cloudflare Access. A `VITE_*` token is visible to browser users and is suitable only for local/single-user development.
-
-## Build the Android widget
-
-Open `android/` in Android Studio (JDK 17, Android SDK 35). Add this to the gitignored `android/local.properties`:
+Create the gitignored `android/local.properties`:
 
 ```properties
 sdk.dir=/path/to/Android/sdk
-RUNWAY_API_URL=https://personal-runway-api.your-subdomain.workers.dev
-RUNWAY_API_TOKEN=the-same-long-random-api-token
+RUNWAY_API_URL=https\://personal-runway-api.<your-subdomain>.workers.dev
+RUNWAY_API_TOKEN=<your RUNWAY_API_TOKEN>
 ```
 
-Build and install the `app` configuration, then add **Personal Runway** from the Android widget picker.
+```bash
+cd android
+./gradlew assembleDebug
+```
 
-- Android checks the cached API every 15 minutes when network is available.
-- Tapping ↻ performs a live Fold refresh.
-- The last successful value remains visible offline or after errors.
-- The widget displays both total runway and liquid-only days.
+Install `android/app/build/outputs/apk/debug/app-debug.apk`, then add **Runway** from the Android widget picker. It requests a fixed 2×2 footprint.
 
-The bearer token is compiled into this single-user APK and can be extracted by a determined attacker. For distribution to multiple users, replace it with per-user sign-in and short-lived tokens (for example, Cloudflare Access or an identity provider).
+## Refresh behaviour
+
+- Cloudflare refreshes Fold every six hours.
+- Android reads the cached snapshot every 15 minutes when online.
+- The companion app can request an immediate Fold sync.
+- OAuth access tokens refresh automatically.
+- Offline and failed refreshes retain the last successful values.
+
+## Security and licensing
+
+`.env.local`, `worker/wrangler.toml`, `worker/.dev.vars`, and `android/local.properties` are ignored.
+
+The single-user APK contains `RUNWAY_API_TOKEN`; do not distribute it publicly. A multi-user release needs per-user authentication and short-lived credentials.
+
+The bundled Ndot57 font comes from [xeji01/nothingfont](https://github.com/xeji01/nothingfont). That repository provides no explicit redistribution license and credits Nothing with “All Rights Reserved.” Confirm licensing or replace it before public distribution.

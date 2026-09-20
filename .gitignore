@@ -5,6 +5,7 @@ dist
 *.tsbuildinfo
 .wrangler
 .dev.vars
+worker/wrangler.toml
 android/local.properties
 android/.gradle
 android/.idea
