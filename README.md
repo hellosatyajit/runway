@@ -14,7 +14,7 @@ The widget shows:
 ```text
 Fold OAuth → Cloudflare Worker → KV snapshot → Web app / Android widget
                          ↑                         │
-                   every 6 hours           checks every 15 min
+                    every 24 hours          checks every 15 min
 ```
 
 Only aggregate balances, runway values, and three monthly burn totals are stored. Failed refreshes leave the last successful snapshot intact.
@@ -110,9 +110,9 @@ Install `android/app/build/outputs/apk/debug/app-debug.apk`, then add **Runway**
 
 ## Refresh behaviour
 
-- Cloudflare refreshes Fold every six hours.
+- Cloudflare refreshes Fold once a day at 00:17 UTC, after the daily reconciliation window.
 - Android reads the cached snapshot every 15 minutes when online.
-- The companion app can request an immediate Fold sync.
+- Tap **Refresh now** in the companion app after manually reconciling Fold to request an immediate sync.
 - OAuth access tokens refresh automatically.
 - Offline and failed refreshes retain the last successful values.
 

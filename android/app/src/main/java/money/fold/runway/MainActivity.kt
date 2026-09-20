@@ -5,6 +5,7 @@ import android.view.Gravity
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 
 class MainActivity : AppCompatActivity() {
@@ -24,8 +25,11 @@ class MainActivity : AppCompatActivity() {
             setPadding(0, pad, 0, pad)
         })
         layout.addView(Button(this).apply {
-            text = "Refresh Fold data"
-            setOnClickListener { RunwayWidgetProvider.enqueue(this@MainActivity, force = true) }
+            text = "Refresh now"
+            setOnClickListener {
+                RunwayWidgetProvider.enqueue(this@MainActivity, force = true)
+                Toast.makeText(this@MainActivity, "Refreshing Fold data…", Toast.LENGTH_SHORT).show()
+            }
         })
         setContentView(layout)
     }

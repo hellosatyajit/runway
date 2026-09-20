@@ -11,4 +11,4 @@ id = "REPLACE_WITH_PRODUCTION_KV_ID"
 preview_id = "REPLACE_WITH_PREVIEW_KV_ID"
 
 [triggers]
-crons = ["17 */6 * * *"]
+crons = ["17 0 * * *"]
