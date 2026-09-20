@@ -1,0 +1,3 @@
+FOLD_MCP_URL=https://your-fold-mcp-endpoint.example/mcp
+FOLD_MCP_TOKEN=replace-me
+RUNWAY_API_TOKEN=replace-with-a-long-random-value
